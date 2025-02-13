@@ -19,17 +19,15 @@ class DRLModel(nn.Module):
         x = self.fc3(x)
         return x
 
-# Simulate data for training with updated logic (including use cases)
+# Simulate data for training with updated logic (including complexity)
 def simulate_data(num_samples=1000):
     """
     Simulates data for training based on the updated logic:
-    - More AI Engineers significantly reduce execution time.
-    - UI Engineers have a smaller impact.
-    - ML Engineers have half the count of AI Engineers and contribute moderately.
-    - The number of use cases increases project duration linearly.
-    Outputs are clipped between 7 and 150 days.
+    - Complexity increases project duration.
+    - More resources (e.g., AI Engineers) reduce execution time.
+    Outputs are clipped between 14 and 150 days.
     """
-    X = np.random.randint(1, 100, size=(num_samples, 9))  # Resource counts and parameters
+    X = np.random.randint(1, 100, size=(num_samples, 10))  # Resource counts and parameters
 
     # Define weights for each resource based on their impact
     architects_weight = 5
@@ -40,6 +38,7 @@ def simulate_data(num_samples=1000):
     ui_engineers_weight = -2   # Smaller negative correlation (less impact)
     ml_engineers_weight = -5   # Moderate negative correlation (half of AI engineers)
     use_cases_weight = 10      # Each use case adds time linearly
+    complexity_weight = 15     # Higher complexity increases project duration significantly
 
     # Compute target days based on weights and add random noise
     y = (
@@ -52,8 +51,9 @@ def simulate_data(num_samples=1000):
         X[:, 6] * ml_engineers_weight +
         X[:, 7] * -15 +  # Unexpected outage has a strong negative impact on days
         X[:, 8] * use_cases_weight +  # Use cases increase project duration linearly
+        X[:, 9] * complexity_weight +  # Complexity increases project duration significantly
         np.random.randint(-10, 10, size=num_samples)  # Add random noise
-    ).clip(14, 150).astype(np.float32)  # Clip values between 7 and 150 days
+    ).clip(14, 150).astype(np.float32)  # Clip values between 14 and 150 days
 
     return X.astype(np.float32), y
 
@@ -85,7 +85,7 @@ def save_model(model, path="models/aiprj_model.pth"):
     torch.save(model.state_dict(), path)
 
 # Load the trained model from a file
-def load_model(path="models/aiprj_model.pth", input_dim=9, output_dim=1):
+def load_model(path="models/aiprj_model.pth", input_dim=10, output_dim=1):
     model = DRLModel(input_dim=input_dim, output_dim=output_dim)
     if os.path.exists(path):
         model.load_state_dict(torch.load(path))
@@ -113,11 +113,14 @@ unexpected_outage = st.slider("Unexpected Outage (days)", min_value=0.0, max_val
 # Input box for specifying number of use cases
 use_cases = st.number_input("Number of Use Cases", min_value=1, max_value=1000, value=4)
 
+# Input box for specifying project complexity level (low to high)
+complexity_level = st.slider("Project Complexity Level", min_value=1.0, max_value=10.0, value=5.0)
+
 # Input box for specifying training runs (epochs)
 training_runs = st.number_input("Number of Training Iterations", min_value=100, max_value=20000, value=1000)
 
 # Initialize variables
-input_dim = 9   # Updated input dimension to include "use_cases"
+input_dim = 10   # Updated input dimension to include "complexity"
 output_dim = 1
 model_path = "models/aiprj_model.pth"
 
@@ -158,11 +161,12 @@ if st.button("Inference"):
                            ui_engineers,
                            ml_engineers,
                            unexpected_outage,
-                           use_cases], dtype=np.float32)
+                           use_cases,
+                           complexity_level], dtype=np.float32)
 
         predicted_output = predict(st.session_state.trained_model, inputs)
 
-        # Clip prediction to ensure it stays within range [7-150]
+        # Clip prediction to ensure it stays within range [14-150]
         predicted_output_clipped = np.clip(predicted_output, 14.0, 150.0)
 
         st.write(f"Predicted Outcome: The project will take approximately {predicted_output_clipped:.2f} days to complete.")
